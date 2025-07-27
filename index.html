@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agricultural Production Quality Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 18px;
+            margin: 20px 0;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .metric-subtitle {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .chart-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+
+        .farmer-details {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            margin-top: 20px;
+        }
+
+        .farmer-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .farmer-table th,
+        .farmer-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .farmer-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .farmer-table tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .quality-high { color: #4CAF50; font-weight: bold; }
+        .quality-medium { color: #FF9800; font-weight: bold; }
+        .quality-low { color: #f44336; font-weight: bold; }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #f44336;
+        }
+
+        .gas-trends-section {
+            margin-bottom: 30px;
+        }
+
+        .gas-trends-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .gas-trends-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .metric-value {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌾 Agricultural Production Quality Dashboard</h1>
+            <p>Real-time monitoring and analysis of farm production quality</p>
+            <button class="refresh-btn" onclick="loadData()">🔄 Refresh Data</button>
+            <div id="lastUpdated" style="margin-top: 10px; font-size: 0.9rem; opacity: 0.8;"></div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <p>📊 Loading production data...</p>
+        </div>
+
+        <div id="error" class="error-message" style="display: none;"></div>
+
+        <div id="dashboard" style="display: none;">
+            <!-- Key Metrics -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="totalMeasurements">0</div>
+                    <div class="metric-label">Total Quality Measurements</div>
+                    <div class="metric-subtitle">Across all farmers</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="avgQuality">0</div>
+                    <div class="metric-label">Average Quality Index</div>
+                    <div class="metric-subtitle">Overall farm performance</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="bestFarmerWeek">-</div>
+                    <div class="metric-label">Best Farmer This Week</div>
+                    <div class="metric-subtitle" id="bestFarmerWeekQuality">Quality: -</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="bestQualityAllTime">0</div>
+                    <div class="metric-label">Best Quality Record</div>
+                    <div class="metric-subtitle" id="bestQualityFarmer">Farmer: -</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="avgTemperature">0°C</div>
+                    <div class="metric-label">Average Temperature</div>
+                    <div class="metric-subtitle">Environmental condition</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="totalWeight">0 kg</div>
+                    <div class="metric-label">Total Production Weight</div>
+                    <div class="metric-subtitle">Combined output</div>
+                </div>
+            </div>
+
+            <!-- Main Performance Charts -->
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Farmer Performance Comparison</div>
+                    <canvas id="farmerComparisonChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Quality Index Trends Over Time</div>
+                    <canvas id="qualityTrendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Gas Sensor Trends Section -->
+            <div class="gas-trends-section">
+                <div class="chart-title" style="text-align: center; color: white; margin-bottom: 20px; font-size: 1.5rem;">
+                    🧪 Gas Sensor Analysis Trends
+                </div>
+                <div class="gas-trends-grid">
+                    <div class="chart-container">
+                        <div class="chart-title">Ammonia Levels Over Time</div>
+                        <canvas id="ammoniaChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Hydrogen Levels Over Time</div>
+                        <canvas id="hydrogenChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Methane Levels Over Time</div>
+                        <canvas id="methaneChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Alcohol Levels Over Time</div>
+                        <canvas id="alcoholChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Production Analysis -->
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Production Weight Distribution</div>
+                    <canvas id="weightAnalysisChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Detailed Farmer Information -->
+            <div class="farmer-details">
+                <div class="chart-title">📋 Detailed Farmer Performance Analysis</div>
+                <table class="farmer-table" id="farmerTable">
+                    <thead>
+                        <tr>
+                            <th>Farmer Name</th>
+                            <th>Measurements</th>
+                            <th>Avg Quality</th>
+                            <th>Best Quality</th>
+                            <th>Total Weight (kg)</th>
+                            <th>Avg Temperature (°C)</th>
+                            <th>Latest Reading</th>
+                        </tr>
+                    </thead>
+                    <tbody id="farmerTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let allData = [];
+        let charts = {};
+
+        // Updated Google Sheets CSV URL
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1xUpWkk3GPGNYAo69bPv8JbZpR3rS6vwha87mfD4NZ4k/export?format=csv';
+
+        // Helper function to parse DD/MM/YYYY HH:MM:SS format
+        function parseTimestamp(timestampString) {
+            // Handle the DD/MM/YYYY HH:MM:SS format
+            const parts = timestampString.split(' ');
+            if (parts.length !== 2) return null;
+            
+            const datePart = parts[0]; // DD/MM/YYYY
+            const timePart = parts[1]; // HH:MM:SS
+            
+            const dateComponents = datePart.split('/');
+            if (dateComponents.length !== 3) return null;
+            
+            const day = parseInt(dateComponents[0], 10);
+            const month = parseInt(dateComponents[1], 10) - 1; // Month is 0-indexed in JavaScript
+            const year = parseInt(dateComponents[2], 10);
+            
+            const timeComponents = timePart.split(':');
+            if (timeComponents.length !== 3) return null;
+            
+            const hours = parseInt(timeComponents[0], 10);
+            const minutes = parseInt(timeComponents[1], 10);
+            const seconds = parseInt(timeComponents[2], 10);
+            
+            return new Date(year, month, day, hours, minutes, seconds);
+        }
+
+        // Load and parse data
+        async function loadData() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+        
+            try {
+                const response = await fetch(SHEET_URL);
+                const csvText = await response.text();
+                
+                // Parse CSV data
+                const lines = csvText.trim().split('\n');
+                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                
+                allData = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                    if (values.length >= headers.length && values[0]) {
+                        const row = {};
+                        headers.forEach((header, index) => {
+                            row[header] = values[index];
+                        });
+                        
+                        // Parse data types with adjustments for the actual headers
+                        row.name = row['User Name'];
+                        
+                        // Use the improved timestamp parsing function
+                        const parsedTimestamp = parseTimestamp(row['Timestamp']);
+                        if (!parsedTimestamp) {
+                            console.warn(`Invalid timestamp format: ${row['Timestamp']}`);
+                            continue; // Skip this row if timestamp is invalid
+                        }
+                        row.timestamp = parsedTimestamp;
+                        
+                        row.weight = parseFloat(row['Load Cell']) || 0;
+                        row.ammonia = parseFloat(row['NH3']) || 0;
+                        row.hydrogen = parseFloat(row['H2']) || 0;
+                        row.methane = parseFloat(row['CH4']) || 0;
+                        row.alcohol = parseFloat(row['Alcohol']) || 0;
+                        row.temperature = parseFloat(row['Temperature']) || 0;
+                        row.humidity = parseFloat(row['Humidity']) || 0;
+                        // Handle percentage in Quality Index
+                        row.quality = parseFloat(row['Quality Index'].replace('%', '')) || 0;
+                        
+                        allData.push(row);
+                    }
+                }
+        
+                // Sort by timestamp
+                allData.sort((a, b) => a.timestamp - b.timestamp);
+        
+                updateDashboard();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                document.getElementById('lastUpdated').textContent = `Last updated: ${new Date().toLocaleString()}`;
+        
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 'Error loading data. Please check the Google Sheets link and try again.';
+            }
+        }
+
+        function updateDashboard() {
+            updateMetrics();
+            updateCharts();
+            updateGasTrends();
+            updateFarmerTable();
+        }
+
+        function updateMetrics() {
+            // Total measurements
+            document.getElementById('totalMeasurements').textContent = allData.length;
+
+            // Average quality
+            const avgQuality = allData.reduce((sum, item) => sum + item.quality, 0) / allData.length;
+            document.getElementById('avgQuality').textContent = avgQuality.toFixed(1);
+
+            // Average temperature
+            const avgTemp = allData.reduce((sum, item) => sum + item.temperature, 0) / allData.length;
+            document.getElementById('avgTemperature').textContent = avgTemp.toFixed(1) + '°C';
+
+            // Total weight
+            const totalWeight = allData.reduce((sum, item) => sum + item.weight, 0);
+            document.getElementById('totalWeight').textContent = totalWeight.toFixed(1) + ' kg';
+
+            // Best farmer this week
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            
+            const weekData = allData.filter(item => item.timestamp >= oneWeekAgo);
+            const farmerWeekStats = {};
+            
+            weekData.forEach(item => {
+                if (!farmerWeekStats[item.name]) {
+                    farmerWeekStats[item.name] = { total: 0, count: 0 };
+                }
+                farmerWeekStats[item.name].total += item.quality;
+                farmerWeekStats[item.name].count += 1;
+            });
+
+            let bestWeekFarmer = null;
+            let bestWeekQuality = 0;
+            
+            Object.keys(farmerWeekStats).forEach(farmerName => {
+                const avgQuality = farmerWeekStats[farmerName].total / farmerWeekStats[farmerName].count;
+                if (avgQuality > bestWeekQuality) {
+                    bestWeekQuality = avgQuality;
+                    bestWeekFarmer = farmerName;
+                }
+            });
+
+            document.getElementById('bestFarmerWeek').textContent = bestWeekFarmer || 'N/A';
+            document.getElementById('bestFarmerWeekQuality').textContent = 
+                bestWeekFarmer ? `Quality: ${bestWeekQuality.toFixed(1)}` : 'No data this week';
+
+            // Best quality all time
+            const bestRecord = allData.reduce((best, item) => 
+                item.quality > best.quality ? item : best, { quality: 0 });
+            
+            document.getElementById('bestQualityAllTime').textContent = bestRecord.quality.toFixed(1);
+            document.getElementById('bestQualityFarmer').textContent = `Farmer: ${bestRecord.name || 'N/A'}`;
+        }
+
+        function updateCharts() {
+            // Farmer comparison chart
+            const farmerStats = {};
+            allData.forEach(item => {
+                if (!farmerStats[item.name]) {
+                    farmerStats[item.name] = { total: 0, count: 0, weights: [] };
+                }
+                farmerStats[item.name].total += item.quality;
+                farmerStats[item.name].count += 1;
+                farmerStats[item.name].weights.push(item.weight);
+            });
+
+            const farmerLabels = Object.keys(farmerStats);
+            const farmerQualities = farmerLabels.map(name => 
+                (farmerStats[name].total / farmerStats[name].count).toFixed(1)
+            );
+
+            if (charts.farmerComparison) charts.farmerComparison.destroy();
+            charts.farmerComparison = new Chart(document.getElementById('farmerComparisonChart'), {
+                type: 'bar',
+                data: {
+                    labels: farmerLabels,
+                    datasets: [{
+                        label: 'Average Quality Index',
+                        data: farmerQualities,
+                        backgroundColor: 'rgba(76, 175, 80, 0.8)',
+                        borderColor: 'rgba(76, 175, 80, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Quality trend chart
+            const trendLabels = allData.map(item => item.timestamp.toLocaleDateString());
+            const trendQualities = allData.map(item => item.quality);
+
+            if (charts.qualityTrend) charts.qualityTrend.destroy();
+            charts.qualityTrend = new Chart(document.getElementById('qualityTrendChart'), {
+                type: 'line',
+                data: {
+                    labels: trendLabels,
+                    datasets: [{
+                        label: 'Quality Index',
+                        data: trendQualities,
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Enhanced weight analysis chart with visible values
+            const farmerNames = Object.keys(farmerStats);
+            const weightData = farmerNames.map(name => {
+                const weights = farmerStats[name].weights;
+                return weights.reduce((sum, w) => sum + w, 0);
+            });
+
+            if (charts.weightAnalysis) charts.weightAnalysis.destroy();
+            charts.weightAnalysis = new Chart(document.getElementById('weightAnalysisChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: farmerNames,
+                    datasets: [{
+                        data: weightData,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(255, 205, 86, 0.8)',
+                            'rgba(75, 192, 192, 0.8)',
+                            'rgba(153, 102, 255, 0.8)',
+                            'rgba(255, 159, 64, 0.8)',
+                            'rgba(199, 199, 199, 0.8)',
+                            'rgba(83, 102, 255, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value.toFixed(1)} kg (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateGasTrends() {
+            const timeLabels = allData.map(item => item.timestamp.toLocaleDateString());
+
+            // Ammonia trend
+            if (charts.ammonia) charts.ammonia.destroy();
+            charts.ammonia = new Chart(document.getElementById('ammoniaChart'), {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'Ammonia Levels',
+                        data: allData.map(item => item.ammonia),
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // Hydrogen trend
+            if (charts.hydrogen) charts.hydrogen.destroy();
+            charts.hydrogen = new Chart(document.getElementById('hydrogenChart'), {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'Hydrogen Levels',
+                        data: allData.map(item => item.hydrogen),
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // Methane trend
+            if (charts.methane) charts.methane.destroy();
+            charts.methane = new Chart(document.getElementById('methaneChart'), {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'Methane Levels',
+                        data: allData.map(item => item.methane),
+                        borderColor: 'rgba(255, 205, 86, 1)',
+                        backgroundColor: 'rgba(255, 205, 86, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // Alcohol trend
+            if (charts.alcohol) charts.alcohol.destroy();
+            charts.alcohol = new Chart(document.getElementById('alcoholChart'), {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'Alcohol Levels',
+                        data: allData.map(item => item.alcohol),
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function updateFarmerTable() {
+            const farmerStats = {};
+            allData.forEach(item => {
+                if (!farmerStats[item.name]) {
+                    farmerStats[item.name] = {
+                        measurements: 0,
+                        totalQuality: 0,
+                        bestQuality: 0,
+                        totalWeight: 0,
+                        totalTemp: 0,
+                        latestDate: item.timestamp
+                    };
+                }
+                
+                const stats = farmerStats[item.name];
+                stats.measurements++;
+                stats.totalQuality += item.quality;
+                stats.bestQuality = Math.max(stats.bestQuality, item.quality);
+                stats.totalWeight += item.weight;
+                stats.totalTemp += item.temperature;
+                if (item.timestamp > stats.latestDate) stats.latestDate = item.timestamp;
+            });
+
+            const tbody = document.getElementById('farmerTableBody');
+            tbody.innerHTML = '';
+
+            Object.keys(farmerStats).forEach(farmerName => {
+                const stats = farmerStats[farmerName];
+                const avgQuality = (stats.totalQuality / stats.measurements).toFixed(1);
+                const avgTemp = (stats.totalTemp / stats.measurements).toFixed(1);
+                
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${farmerName}</td>
+                    <td>${stats.measurements}</td>
+                    <td><span class="${getQualityClass(avgQuality)}">${avgQuality}</span></td>
+                    <td><span class="${getQualityClass(stats.bestQuality)}">${stats.bestQuality.toFixed(1)}</span></td>
+                    <td>${stats.totalWeight.toFixed(1)} kg</td>
+                    <td>${avgTemp}°C</td>
+                    <td>${stats.latestDate.toLocaleDateString()}</td>
+                `;
+            });
+        }
+
+        function getQualityClass(quality) {
+            if (quality >= 80) return 'quality-high';
+            if (quality >= 60) return 'quality-medium';
+            return 'quality-low';
+        }
+
+        // Load data on page load
+        loadData();
+
+        // Auto-refresh every 5 minutes
+        setInterval(loadData, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
