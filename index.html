@@ -427,7 +427,7 @@
         function parseQualityIndex(qualityString) {
             if (!qualityString) return 0;
             // Remove % and any spaces, then parse as float
-            const cleanedString = qualityString.replace(/\s*%\s*$/, '').trim();
+            const cleanedString = qualityString.replace(/%\s*$/, '').trim();
             return parseFloat(cleanedString) || 0;
         }
 
