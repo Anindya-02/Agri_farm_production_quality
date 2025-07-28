@@ -311,11 +311,6 @@
                     <div class="metric-subtitle" id="bestQualityFarmer">Farmer: -</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value" id="avgTemperature">0°C</div>
-                    <div class="metric-label">Average Temperature</div>
-                    <div class="metric-subtitle">Environmental condition</div>
-                </div>
-                <div class="metric-card">
                     <div class="metric-value" id="totalWeight">0 kg</div>
                     <div class="metric-label">Total Production Weight</div>
                     <div class="metric-subtitle">Combined output</div>
@@ -378,7 +373,6 @@
                             <th>Avg Quality</th>
                             <th>Best Quality</th>
                             <th>Total Weight (kg)</th>
-                            <th>Avg Temperature (°C)</th>
                             <th>Latest Reading</th>
                         </tr>
                     </thead>
@@ -399,7 +393,6 @@
 
         // Helper function to parse DD/MM/YYYY HH:MM:SS format
         function parseTimestamp(timestampString) {
-            // Handle the DD/MM/YYYY HH:MM:SS format
             const parts = timestampString.split(' ');
             if (parts.length !== 2) return null;
             
@@ -423,12 +416,13 @@
             return new Date(year, month, day, hours, minutes, seconds);
         }
 
-        // Helper function to parse Quality Index with space before %
+        // Helper function to parse Quality Index with multiple values and percentage
         function parseQualityIndex(qualityString) {
             if (!qualityString) return 0;
-            // Remove % and any spaces, then parse as float
-            const cleanedString = qualityString.replace(/%\s*$/, '').trim();
-            return parseFloat(cleanedString) || 0;
+            // Split by space, take the last part, remove % and any surrounding spaces, then parse
+            const parts = qualityString.trim().split(' ');
+            const lastPart = parts[parts.length - 1].replace(/%\s*$/, '').trim();
+            return parseFloat(lastPart) || 0;
         }
 
         // Load and parse data
@@ -522,10 +516,6 @@
             // Average quality
             const avgQuality = allData.reduce((sum, item) => sum + item.quality, 0) / allData.length;
             document.getElementById('avgQuality').textContent = avgQuality.toFixed(1) + '%';
-
-            // Average temperature
-            const avgTemp = allData.reduce((sum, item) => sum + item.temperature, 0) / allData.length;
-            document.getElementById('avgTemperature').textContent = avgTemp.toFixed(1) + '°C';
 
             // Total weight
             const totalWeight = allData.reduce((sum, item) => sum + item.weight, 0);
@@ -776,7 +766,6 @@
                         totalQuality: 0,
                         bestQuality: 0,
                         totalWeight: 0,
-                        totalTemp: 0,
                         latestDate: item.timestamp
                     };
                 }
@@ -784,4 +773,32 @@
                 const stats = farmerStats[item.name];
                 stats.measurements++;
                 stats.totalQuality += item.quality;
-                stats.bestQuality = Math.
+                stats.bestQuality = Math.max(stats.bestQuality, item.quality);
+                stats.totalWeight += item.weight;
+                if (item.timestamp > stats.latestDate) stats.latestDate = item.timestamp;
+            });
+
+            const tableBody = document.getElementById('farmerTableBody');
+            tableBody.innerHTML = '';
+            
+            Object.keys(farmerStats).forEach(farmerName => {
+                const stats = farmerStats[farmerName];
+                const avgQuality = stats.totalQuality / stats.measurements;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${farmerName}</td>
+                    <td>${stats.measurements}</td>
+                    <td>${avgQuality.toFixed(1)}%</td>
+                    <td>${stats.bestQuality.toFixed(1)}%</td>
+                    <td>${stats.totalWeight.toFixed(1)} kg</td>
+                    <td>${stats.latestDate.toLocaleString()}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Initial load
+        loadData();
+    </script>
+</body>
+</html>
