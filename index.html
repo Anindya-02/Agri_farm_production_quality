@@ -420,9 +420,9 @@
         function parseQualityIndex(qualityString) {
             if (!qualityString) return 0;
             // Split by space, take the last part, remove % and any surrounding spaces, then parse
-            const parts = qualityString.trim().split(' ');
-            const lastPart = parts[parts.length - 1].replace(/%\s*$/, '').trim();
-            return parseFloat(lastPart) || 0;
+            const cleanString = qualityString.replace(/%/g, '').trim();
+            const numberMatch = cleanString.match(/[\d.]+/);
+            return numberMatch ? parseFloat(numberMatch[0]) : 0;
         }
 
         // Load and parse data
