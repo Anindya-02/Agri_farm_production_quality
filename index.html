@@ -186,6 +186,46 @@
             gap: 25px;
         }
 
+        .latest-entry-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            margin-bottom: 20px;
+        }
+
+        .latest-entry-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .latest-entry-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .latest-entry-item {
+            text-align: center;
+        }
+
+        .latest-entry-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .latest-entry-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
         @media (max-width: 768px) {
             .charts-grid {
                 grid-template-columns: 1fr;
@@ -201,6 +241,10 @@
             
             .metric-value {
                 font-size: 2rem;
+            }
+
+            .latest-entry-content {
+                flex-direction: column;
             }
         }
     </style>
@@ -221,6 +265,29 @@
         <div id="error" class="error-message" style="display: none;"></div>
 
         <div id="dashboard" style="display: none;">
+            <!-- Latest Entry Display -->
+            <div class="latest-entry-card">
+                <div class="latest-entry-title">🆕 Latest Entry</div>
+                <div class="latest-entry-content">
+                    <div class="latest-entry-item">
+                        <div class="latest-entry-value" id="latestFarmerName">-</div>
+                        <div class="latest-entry-label">Farmer Name</div>
+                    </div>
+                    <div class="latest-entry-item">
+                        <div class="latest-entry-value" id="latestQuality">-</div>
+                        <div class="latest-entry-label">Quality Index</div>
+                    </div>
+                    <div class="latest-entry-item">
+                        <div class="latest-entry-value" id="latestWeight">-</div>
+                        <div class="latest-entry-label">Weight (kg)</div>
+                    </div>
+                    <div class="latest-entry-item">
+                        <div class="latest-entry-value" id="latestTimestamp">-</div>
+                        <div class="latest-entry-label">Timestamp</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Key Metrics -->
             <div class="metrics-grid">
                 <div class="metric-card">
@@ -356,6 +423,14 @@
             return new Date(year, month, day, hours, minutes, seconds);
         }
 
+        // Helper function to parse Quality Index with space before %
+        function parseQualityIndex(qualityString) {
+            if (!qualityString) return 0;
+            // Remove % and any spaces, then parse as float
+            const cleanedString = qualityString.replace(/\s*%\s*$/, '').trim();
+            return parseFloat(cleanedString) || 0;
+        }
+
         // Load and parse data
         async function loadData() {
             document.getElementById('loading').style.display = 'block';
@@ -397,8 +472,8 @@
                         row.alcohol = parseFloat(row['Alcohol']) || 0;
                         row.temperature = parseFloat(row['Temperature']) || 0;
                         row.humidity = parseFloat(row['Humidity']) || 0;
-                        // Handle percentage in Quality Index
-                        row.quality = parseFloat(row['Quality Index'].replace('%', '')) || 0;
+                        // Use the improved Quality Index parsing function
+                        row.quality = parseQualityIndex(row['Quality Index']);
                         
                         allData.push(row);
                     }
@@ -421,10 +496,23 @@
         }
 
         function updateDashboard() {
+            updateLatestEntry();
             updateMetrics();
             updateCharts();
             updateGasTrends();
             updateFarmerTable();
+        }
+
+        function updateLatestEntry() {
+            if (allData.length === 0) return;
+            
+            // Find the latest entry (data is already sorted by timestamp)
+            const latestEntry = allData[allData.length - 1];
+            
+            document.getElementById('latestFarmerName').textContent = latestEntry.name || 'N/A';
+            document.getElementById('latestQuality').textContent = latestEntry.quality.toFixed(1) + '%';
+            document.getElementById('latestWeight').textContent = latestEntry.weight.toFixed(2);
+            document.getElementById('latestTimestamp').textContent = latestEntry.timestamp.toLocaleString();
         }
 
         function updateMetrics() {
@@ -433,7 +521,7 @@
 
             // Average quality
             const avgQuality = allData.reduce((sum, item) => sum + item.quality, 0) / allData.length;
-            document.getElementById('avgQuality').textContent = avgQuality.toFixed(1);
+            document.getElementById('avgQuality').textContent = avgQuality.toFixed(1) + '%';
 
             // Average temperature
             const avgTemp = allData.reduce((sum, item) => sum + item.temperature, 0) / allData.length;
@@ -471,13 +559,13 @@
 
             document.getElementById('bestFarmerWeek').textContent = bestWeekFarmer || 'N/A';
             document.getElementById('bestFarmerWeekQuality').textContent = 
-                bestWeekFarmer ? `Quality: ${bestWeekQuality.toFixed(1)}` : 'No data this week';
+                bestWeekFarmer ? `Quality: ${bestWeekQuality.toFixed(1)}%` : 'No data this week';
 
             // Best quality all time
             const bestRecord = allData.reduce((best, item) => 
                 item.quality > best.quality ? item : best, { quality: 0 });
             
-            document.getElementById('bestQualityAllTime').textContent = bestRecord.quality.toFixed(1);
+            document.getElementById('bestQualityAllTime').textContent = bestRecord.quality.toFixed(1) + '%';
             document.getElementById('bestQualityFarmer').textContent = `Farmer: ${bestRecord.name || 'N/A'}`;
         }
 
@@ -504,7 +592,7 @@
                 data: {
                     labels: farmerLabels,
                     datasets: [{
-                        label: 'Average Quality Index',
+                        label: 'Average Quality Index (%)',
                         data: farmerQualities,
                         backgroundColor: 'rgba(76, 175, 80, 0.8)',
                         borderColor: 'rgba(76, 175, 80, 1)',
@@ -529,7 +617,7 @@
                 data: {
                     labels: trendLabels,
                     datasets: [{
-                        label: 'Quality Index',
+                        label: 'Quality Index (%)',
                         data: trendQualities,
                         borderColor: 'rgba(54, 162, 235, 1)',
                         backgroundColor: 'rgba(54, 162, 235, 0.1)',
@@ -696,44 +784,4 @@
                 const stats = farmerStats[item.name];
                 stats.measurements++;
                 stats.totalQuality += item.quality;
-                stats.bestQuality = Math.max(stats.bestQuality, item.quality);
-                stats.totalWeight += item.weight;
-                stats.totalTemp += item.temperature;
-                if (item.timestamp > stats.latestDate) stats.latestDate = item.timestamp;
-            });
-
-            const tbody = document.getElementById('farmerTableBody');
-            tbody.innerHTML = '';
-
-            Object.keys(farmerStats).forEach(farmerName => {
-                const stats = farmerStats[farmerName];
-                const avgQuality = (stats.totalQuality / stats.measurements).toFixed(1);
-                const avgTemp = (stats.totalTemp / stats.measurements).toFixed(1);
-                
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${farmerName}</td>
-                    <td>${stats.measurements}</td>
-                    <td><span class="${getQualityClass(avgQuality)}">${avgQuality}</span></td>
-                    <td><span class="${getQualityClass(stats.bestQuality)}">${stats.bestQuality.toFixed(1)}</span></td>
-                    <td>${stats.totalWeight.toFixed(1)} kg</td>
-                    <td>${avgTemp}°C</td>
-                    <td>${stats.latestDate.toLocaleDateString()}</td>
-                `;
-            });
-        }
-
-        function getQualityClass(quality) {
-            if (quality >= 80) return 'quality-high';
-            if (quality >= 60) return 'quality-medium';
-            return 'quality-low';
-        }
-
-        // Load data on page load
-        loadData();
-
-        // Auto-refresh every 5 minutes
-        setInterval(loadData, 5 * 60 * 1000);
-    </script>
-</body>
-</html>
+                stats.bestQuality = Math.
